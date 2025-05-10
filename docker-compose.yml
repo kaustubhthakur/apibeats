@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  manager:
+    build:
+      context: ./manager
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - HEARTBEAT_TIMEOUT=30
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker1:
+    build:
+      context: ./worker
+    ports:
+      - "8081:8080"
+    environment:
+      - MANAGER_URL=ws://manager:8000
+      - WORKER_ID=worker-001
+      - WORKER_NAME=Worker1
+      - SERVICE_TYPE=api-service
+      - HEARTBEAT_INTERVAL=10
+    depends_on:
+      - manager
+    restart: unless-stopped
+
+  worker2:
+    build:
+      context: ./worker
+    ports:
+      - "8082:8080"
+    environment:
+      - MANAGER_URL=ws://manager:8000
+      - WORKER_ID=worker-002
+      - WORKER_NAME=Worker2
+      - SERVICE_TYPE=api-service
+      - HEARTBEAT_INTERVAL=10
+    depends_on:
+      - manager
+    restart: unless-stopped
+
+  worker3:
+    build:
+      context: ./worker
+    ports:
+      - "8083:8080"
+    environment:
+      - MANAGER_URL=ws://manager:8000
+      - WORKER_ID=worker-003
+      - WORKER_NAME=Worker3
+      - SERVICE_TYPE=api-service
+      - HEARTBEAT_INTERVAL=10
+    depends_on:
+      - manager
+    restart: unless-stopped
+
+  worker4:
+    build:
+      context: ./worker
+    ports:
+      - "8084:8080"
+    environment:
+      - MANAGER_URL=ws://manager:8000
+      - WORKER_ID=worker-004
+      - WORKER_NAME=Worker4
+      - SERVICE_TYPE=worker-service
+      - HEARTBEAT_INTERVAL=10
+    depends_on:
+      - manager
+    restart: unless-stopped
+
+volumes:
+  redis-data:
