@@ -71,10 +71,10 @@ async def check_heartbeats():
                 dead_workers.append(worker_id)
                 logger.warning(f"Worker {worker_id} missed heartbeat, last seen: {last_time}")
                 
-                # Remove from active tracking
+               
                 last_heartbeats.pop(worker_id, None)
                 
-                # Update status in Redis
+                
                 worker_info = await app.state.redis.hget("workers", worker_id)
                 if worker_info:
                     worker_data = json.loads(worker_info)
@@ -89,7 +89,7 @@ async def register_worker(websocket: WebSocket):
     worker_id = None
     
     try:
-        # Wait for registration data
+       
         registration_data = await websocket.receive_json()
         worker_id = registration_data.get("worker_id")
         
@@ -98,10 +98,10 @@ async def register_worker(websocket: WebSocket):
             await websocket.close()
             return
         
-        # Store connection
+        
         active_connections[worker_id] = websocket
         
-        # Store worker info in Redis
+        
         worker_data = {
             "worker_id": worker_id,
             "name": registration_data.get("name", f"worker-{worker_id}"),
@@ -115,16 +115,16 @@ async def register_worker(websocket: WebSocket):
         await app.state.redis.hset("workers", worker_id, json.dumps(worker_data))
         logger.info(f"Worker registered: {worker_id}")
         
-        # Acknowledge registration
+       
         await websocket.send_json({"status": "registered", "worker_id": worker_id})
         
-        # Process heartbeats
+        
         while True:
             heartbeat_data = await websocket.receive_json()
             current_time = datetime.utcnow()
             last_heartbeats[worker_id] = current_time
             
-            # Update last heartbeat in Redis
+            
             worker_info = await app.state.redis.hget("workers", worker_id)
             if worker_info:
                 worker_data = json.loads(worker_info)
@@ -133,17 +133,17 @@ async def register_worker(websocket: WebSocket):
                 await app.state.redis.hset("workers", worker_id, json.dumps(worker_data))
             
             logger.debug(f"Heartbeat received from {worker_id}")
-            # Acknowledge heartbeat
+            
             await websocket.send_json({"status": "heartbeat_ack", "timestamp": current_time.isoformat()})
             
     except WebSocketDisconnect:
         logger.info(f"Worker disconnected: {worker_id}")
         if worker_id:
-            # Remove from active tracking
+            
             active_connections.pop(worker_id, None)
             last_heartbeats.pop(worker_id, None)
             
-            # Update status in Redis
+           
             worker_info = await app.state.redis.hget("workers", worker_id)
             if worker_info:
                 worker_data = json.loads(worker_info)

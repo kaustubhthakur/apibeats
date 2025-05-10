@@ -26,7 +26,6 @@ heartbeat_client = None
 @app.on_event("startup")
 async def startup_event():
     global heartbeat_client
-    # Create and start the heartbeat client
     heartbeat_client = HeartbeatClient(
         manager_url=MANAGER_URL,
         worker_id=WORKER_ID,
@@ -43,7 +42,6 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    # Stop the heartbeat client
     if heartbeat_client:
         await heartbeat_client.stop()
     logger.info("Worker shutting down")

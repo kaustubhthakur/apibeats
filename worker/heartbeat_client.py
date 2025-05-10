@@ -5,14 +5,14 @@ import uuid
 from fastapi import FastAPI, BackgroundTasks
 from heartbeat_client import HeartbeatClient
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("worker")
 
-# Get environment variables or use defaults
+
 MANAGER_URL = os.getenv("MANAGER_URL", "ws://manager:8000")
 WORKER_ID = os.getenv("WORKER_ID", str(uuid.uuid4()))
 WORKER_NAME = os.getenv("WORKER_NAME", f"worker-{WORKER_ID}")
@@ -26,7 +26,6 @@ heartbeat_client = None
 @app.on_event("startup")
 async def startup_event():
     global heartbeat_client
-    # Create and start the heartbeat client
     heartbeat_client = HeartbeatClient(
         manager_url=MANAGER_URL,
         worker_id=WORKER_ID,
