@@ -1,91 +1,102 @@
 version: '3.8'
 
 services:
+  # Redis for storing worker registration and state
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
 
+  # Manager service
   manager:
     build:
-      context: ./manager
+      context: .
+      dockerfile: manager.Dockerfile
     ports:
       - "8000:8000"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - HEARTBEAT_TIMEOUT=30
+      - HEARTBEAT_TIMEOUT=10
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
 
+  # Worker 1
   worker1:
     build:
-      context: ./worker
+      context: .
+      dockerfile: worker.Dockerfile
     ports:
       - "8081:8080"
     environment:
-      - MANAGER_URL=ws://manager:8000
-      - WORKER_ID=worker-001
-      - WORKER_NAME=Worker1
-      - SERVICE_TYPE=api-service
-      - HEARTBEAT_INTERVAL=10
+      - WORKER_ID=worker1
+      - WORKER_NAME=FastAPI Worker 1
+      - WORKER_PORT=8080
+      - MANAGER_URL=http://manager:8000
+      - HEARTBEAT_INTERVAL=5
     depends_on:
       - manager
     restart: unless-stopped
 
+  # Worker 2
   worker2:
     build:
-      context: ./worker
+      context: .
+      dockerfile: worker.Dockerfile
     ports:
       - "8082:8080"
     environment:
-      - MANAGER_URL=ws://manager:8000
-      - WORKER_ID=worker-002
-      - WORKER_NAME=Worker2
-      - SERVICE_TYPE=api-service
-      - HEARTBEAT_INTERVAL=10
+      - WORKER_ID=worker2
+      - WORKER_NAME=FastAPI Worker 2
+      - WORKER_PORT=8080
+      - MANAGER_URL=http://manager:8000
+      - HEARTBEAT_INTERVAL=5
     depends_on:
       - manager
     restart: unless-stopped
 
+  # Worker 3
   worker3:
     build:
-      context: ./worker
+      context: .
+      dockerfile: worker.Dockerfile
     ports:
       - "8083:8080"
     environment:
-      - MANAGER_URL=ws://manager:8000
-      - WORKER_ID=worker-003
-      - WORKER_NAME=Worker3
-      - SERVICE_TYPE=api-service
-      - HEARTBEAT_INTERVAL=10
+      - WORKER_ID=worker3
+      - WORKER_NAME=FastAPI Worker 3
+      - WORKER_PORT=8080
+      - MANAGER_URL=http://manager:8000
+      - HEARTBEAT_INTERVAL=5
     depends_on:
       - manager
     restart: unless-stopped
 
+  # Worker 4
   worker4:
     build:
-      context: ./worker
+      context: .
+      dockerfile: worker.Dockerfile
     ports:
       - "8084:8080"
     environment:
-      - MANAGER_URL=ws://manager:8000
-      - WORKER_ID=worker-004
-      - WORKER_NAME=Worker4
-      - SERVICE_TYPE=worker-service
-      - HEARTBEAT_INTERVAL=10
+      - WORKER_ID=worker4
+      - WORKER_NAME=FastAPI Worker 4
+      - WORKER_PORT=8080
+      - MANAGER_URL=http://manager:8000
+      - HEARTBEAT_INTERVAL=5
     depends_on:
       - manager
     restart: unless-stopped
 
 volumes:
-  redis-data:
+  redis_data:
