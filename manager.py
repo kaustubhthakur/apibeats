@@ -9,12 +9,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-# Configure logging
+
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
+
 app = FastAPI(title="FastAPI Heartbeat Manager")
 
 # Connect to Redis
@@ -22,13 +22,13 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
-# Heartbeat timeout in seconds
+
 HEARTBEAT_TIMEOUT = int(os.getenv("HEARTBEAT_TIMEOUT", "10"))
 
-# Global dictionary to store active connections
+
 active_connections = {}
 
-# Global dictionary to store last heartbeat time for each worker
+
 last_heartbeats = {}
 
 class WorkerRegistration(BaseModel):
@@ -67,7 +67,7 @@ async def register_worker(worker: WorkerRegistration):
             "status": "registered"
         }
         
-        # Store worker info in Redis
+        
         await app.state.redis.hset(
             f"worker:{worker.worker_id}", 
             mapping=worker_data
@@ -88,14 +88,14 @@ async def register_worker(worker: WorkerRegistration):
 async def list_workers():
     """List all registered workers and their status"""
     try:
-        # Get all worker keys from Redis
+        
         worker_keys = await app.state.redis.keys("worker:*")
         workers = []
         
         for key in worker_keys:
             worker_data = await app.state.redis.hgetall(key)
             
-            # Add current status from in-memory tracking
+            
             worker_id = worker_data.get("worker_id")
             if worker_id in last_heartbeats:
                 last_heartbeat = last_heartbeats[worker_id]
@@ -123,13 +123,13 @@ async def websocket_heartbeat(websocket: WebSocket, worker_id: str):
     """WebSocket endpoint to receive heartbeats from workers"""
     await websocket.accept()
     
-    # Check if the worker is registered
+    
     worker_exists = await app.state.redis.exists(f"worker:{worker_id}")
     if not worker_exists:
         await websocket.close(code=1008, reason="Worker not registered")
         return
     
-    # Update worker status to connected
+    
     await app.state.redis.hset(
         f"worker:{worker_id}", 
         "status", 
@@ -141,14 +141,14 @@ async def websocket_heartbeat(websocket: WebSocket, worker_id: str):
     
     try:
         while True:
-            # Receive heartbeat data from worker
+            
             data = await websocket.receive_text()
             heartbeat_data = json.loads(data)
             
-            # Update last heartbeat time
+            
             last_heartbeats[worker_id] = datetime.now()
             
-            # Store heartbeat in Redis with expiration
+            
             heartbeat_key = f"heartbeat:{worker_id}:{datetime.now().isoformat()}"
             await app.state.redis.setex(
                 heartbeat_key,
@@ -156,7 +156,7 @@ async def websocket_heartbeat(websocket: WebSocket, worker_id: str):
                 json.dumps(heartbeat_data)
             )
             
-            # Send confirmation back to worker
+            
             await websocket.send_text(json.dumps({
                 "status": "received",
                 "timestamp": datetime.now().isoformat()
@@ -167,28 +167,28 @@ async def websocket_heartbeat(websocket: WebSocket, worker_id: str):
     except WebSocketDisconnect:
         logger.warning(f"WebSocket disconnected for worker: {worker_id}")
         
-        # Update worker status to disconnected
+        
         await app.state.redis.hset(
             f"worker:{worker_id}", 
             "status", 
             "disconnected"
         )
         
-        # Remove from active connections
+        
         if worker_id in active_connections:
             del active_connections[worker_id]
     
     except Exception as e:
         logger.error(f"Error in WebSocket connection with {worker_id}: {str(e)}")
         
-        # Update worker status to error
+        
         await app.state.redis.hset(
             f"worker:{worker_id}", 
             "status", 
             f"error: {str(e)}"
         )
         
-        # Remove from active connections
+        
         if worker_id in active_connections:
             del active_connections[worker_id]
 
@@ -199,28 +199,28 @@ async def check_heartbeats():
         try:
             current_time = datetime.now()
             
-            # Check all workers for missing heartbeats
+            
             for worker_id, last_heartbeat in last_heartbeats.items():
                 time_since_last = (current_time - last_heartbeat).total_seconds()
                 
                 if time_since_last > HEARTBEAT_TIMEOUT:
                     logger.warning(f"Worker {worker_id} has not sent a heartbeat in {time_since_last:.1f} seconds")
                     
-                    # Update worker status in Redis
+                    
                     await app.state.redis.hset(
                         f"worker:{worker_id}", 
                         "status", 
                         "dead"
                     )
                     
-                    # Record the last time we saw this worker
+                   
                     await app.state.redis.hset(
                         f"worker:{worker_id}", 
                         "last_seen", 
                         last_heartbeat.isoformat()
                     )
             
-            # Check for workers that we haven't seen at all
+            
             worker_keys = await app.state.redis.keys("worker:*")
             for key in worker_keys:
                 worker_id = key.split(":")[1]
@@ -233,7 +233,7 @@ async def check_heartbeats():
         except Exception as e:
             logger.error(f"Error checking heartbeats: {str(e)}")
         
-        # Sleep for a portion of the heartbeat timeout
+        
         await asyncio.sleep(HEARTBEAT_TIMEOUT / 2)
 
 
